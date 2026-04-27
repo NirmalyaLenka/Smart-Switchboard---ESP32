@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Switchboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;500;700&display=swap');
+
+  :root {
+    --bg:       #0d0f14;
+    --panel:    #13161d;
+    --border:   #1e2330;
+    --accent:   #f0a500;
+    --on:       #22c55e;
+    --off:      #334155;
+    --text:     #cbd5e1;
+    --dim:      #475569;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Barlow', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  /* header */
+  header {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .logo-mark {
+    width: 42px; height: 42px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 6px;
+  }
+  .logo-mark span {
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: .4;
+    transition: opacity .3s;
+  }
+  .logo-mark span.lit { opacity: 1; }
+  .title-block h1 {
+    font-family: var(--mono);
+    font-size: 1.15rem;
+    letter-spacing: .06em;
+    color: #fff;
+  }
+  .title-block p {
+    font-size: .75rem;
+    color: var(--dim);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+
+  /* connection pill */
+  #conn-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: .7rem;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    transition: all .4s;
+  }
+  #conn-pill.live {
+    border-color: var(--on);
+    color: var(--on);
+  }
+
+  /* channel grid */
+  .grid {
+    width: 100%;
+    max-width: 520px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .channel-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: border-color .3s, box-shadow .3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .channel-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--off);
+    transition: background .35s;
+    border-radius: 14px 14px 0 0;
+  }
+  .channel-card.on::before { background: var(--on); }
+  .channel-card.on {
+    border-color: rgba(34,197,94,.25);
+    box-shadow: 0 0 24px rgba(34,197,94,.07);
+  }
+
+  .ch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .ch-name {
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: .02em;
+  }
+  .ch-num {
+    font-family: var(--mono);
+    font-size: .65rem;
+    color: var(--dim);
+    margin-top: 3px;
+  }
+
+  /* status dot */
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--off);
+    margin-top: 4px;
+    transition: background .3s, box-shadow .3s;
+  }
+  .channel-card.on .status-dot {
+    background: var(--on);
+    box-shadow: 0 0 6px var(--on);
+  }
+
+  /* toggle switch */
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .toggle {
+    position: relative;
+    width: 52px; height: 28px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle input { display: none; }
+  .track {
+    position: absolute;
+    inset: 0;
+    background: var(--off);
+    border-radius: 99px;
+    transition: background .3s;
+  }
+  .toggle input:checked + .track { background: var(--on); }
+  .thumb {
+    position: absolute;
+    top: 4px; left: 4px;
+    width: 20px; height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 1px 4px rgba(0,0,0,.4);
+  }
+  .toggle input:checked ~ .thumb { transform: translateX(24px); }
+
+  .state-label {
+    font-family: var(--mono);
+    font-size: .75rem;
+    color: var(--dim);
+    transition: color .3s;
+    min-width: 28px;
+  }
+  .channel-card.on .state-label { color: var(--on); }
+
+  /* channel name editor */
+  .name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: .85rem;
+    width: 100%;
+    padding: 2px 0;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .name-input:focus { border-color: var(--accent); }
+
+  /* all-off button */
+  .controls {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  }
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: .85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .btn:hover { background: var(--border); }
+  .btn.danger:hover { border-color: #ef4444; color: #ef4444; }
+
+  /* info box */
+  .info-box {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 28px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .info-box h3 {
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--accent);
+    letter-spacing: .08em;
+    margin-bottom: 12px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: .8rem;
+  }
+  .info-row:last-child { border: none; }
+  .info-row .label { color: var(--dim); }
+  .info-row .value { font-family: var(--mono); color: var(--text); }
+
+  /* toast */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: .8rem;
+    padding: 10px 20px;
+    border-radius: 99px;
+    transition: transform .3s;
+    pointer-events: none;
+    white-space: nowrap;
+    font-family: var(--mono);
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 400px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <span id="lm0" class="lit"></span>
+    <span id="lm1"></span>
+    <span id="lm2" class="lit"></span>
+    <span id="lm3"></span>
+  </div>
+  <div class="title-block">
+    <h1>SMART SWITCHBOARD</h1>
+    <p>ESP32 local control panel</p>
+  </div>
+  <div id="conn-pill">connecting</div>
+</header>
+
+<div class="grid" id="channelGrid"></div>
+
+<div class="controls">
+  <button class="btn danger" onclick="allOff()">All Off</button>
+  <button class="btn" onclick="refreshStatus()">Refresh</button>
+</div>
+
+<div class="info-box">
+  <h3>CONNECTION INFO</h3>
+  <div class="info-row">
+    <span class="label">Local (no internet)</span>
+    <span class="value" id="info-ap">192.168.4.1</span>
+  </div>
+  <div class="info-row">
+    <span class="label">Network IP</span>
+    <span class="value" id="info-sta">not connected</span>
+  </div>
+  <div class="info-row">
+    <span class="label">AP SSID</span>
+    <span class="value">SmartBoard</span>
+  </div>
+  <div class="info-row">
+    <span class="label">AP Password</span>
+    <span class="value">switch1234</span>
+  </div>
+  <div class="info-row">
+    <span class="label">Physical switches</span>
+    <span class="value">always work</span>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const NUM_CH = 4;
+const DEFAULT_NAMES = ["Living Room", "Bedroom", "Kitchen", "Bathroom"];
+
+let state = Array.from({length: NUM_CH}, (_, i) => ({
+  id: i,
+  on: false,
+  name: localStorage.getItem("ch_name_" + i) || DEFAULT_NAMES[i]
+}));
+
+let evtSource = null;
+let isDemo = false;
+
+// ─── Detect if running standalone (demo) or on ESP32 ─────────────────────────
+function isEsp32() {
+  const host = window.location.hostname;
+  return host === "192.168.4.1" || host.startsWith("192.168") || host === "10.0.0" || (host !== "localhost" && host !== "127.0.0.1" && host !== "");
+}
+
+// ─── Build UI ─────────────────────────────────────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById("channelGrid");
+  grid.innerHTML = "";
+  state.forEach(ch => {
+    const card = document.createElement("div");
+    card.className = "channel-card" + (ch.on ? " on" : "");
+    card.id = "card_" + ch.id;
+    card.innerHTML = `
+      <div class="ch-header">
+        <div>
+          <input class="name-input" id="name_${ch.id}" value="${ch.name}"
+            onchange="saveName(${ch.id}, this.value)"
+            placeholder="Channel ${ch.id + 1}" />
+          <div class="ch-num">CH-0${ch.id + 1}</div>
+        </div>
+        <div class="status-dot" id="dot_${ch.id}"></div>
+      </div>
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" id="toggle_${ch.id}" ${ch.on ? "checked" : ""}
+            onchange="handleToggle(${ch.id}, this.checked)" />
+          <div class="track"></div>
+          <div class="thumb"></div>
+        </label>
+        <span class="state-label" id="label_${ch.id}">${ch.on ? "ON" : "OFF"}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  updateLogoMark();
+}
+
+function updateCard(id) {
+  const ch = state[id];
+  const card  = document.getElementById("card_"   + id);
+  const tog   = document.getElementById("toggle_" + id);
+  const label = document.getElementById("label_"  + id);
+  if (!card) return;
+  card.className  = "channel-card" + (ch.on ? " on" : "");
+  tog.checked     = ch.on;
+  label.textContent = ch.on ? "ON" : "OFF";
+  updateLogoMark();
+}
+
+function updateLogoMark() {
+  for (let i = 0; i < NUM_CH; i++) {
+    const s = document.getElementById("lm" + i);
+    if (!s) continue;
+    s.classList.toggle("lit", state[i].on);
+  }
+}
+
+// ─── API calls (real ESP32) ───────────────────────────────────────────────────
+async function apiToggle(ch) {
+  try {
+    const r = await fetch("/api/toggle?ch=" + ch, {method:"POST"});
+    const d = await r.json();
+    applyStatus(d);
+  } catch(e) { toast("Connection error"); }
+}
+
+async function refreshStatus() {
+  try {
+    const r = await fetch("/api/status");
+    const d = await r.json();
+    applyStatus(d);
+  } catch(e) { toast("Connection error"); }
+}
+
+async function allOff() {
+  if (isDemo) {
+    state.forEach(ch => { ch.on = false; updateCard(ch.id); });
+    toast("All channels off");
+    return;
+  }
+  try {
+    const r = await fetch("/api/alloff", {method:"POST"});
+    const d = await r.json();
+    applyStatus(d);
+    toast("All channels turned off");
+  } catch(e) { toast("Connection error"); }
+}
+
+function applyStatus(data) {
+  if (!data.channels) return;
+  data.channels.forEach(ch => {
+    state[ch.id].on = ch.on;
+    updateCard(ch.id);
+  });
+}
+
+// ─── Toggle handler ───────────────────────────────────────────────────────────
+function handleToggle(id, checked) {
+  if (isDemo) {
+    state[id].on = checked;
+    updateCard(id);
+    toast("CH-0" + (id+1) + " " + (checked ? "ON" : "OFF") + "  (demo mode)");
+    return;
+  }
+  apiToggle(id);
+}
+
+// ─── Channel name persistence ─────────────────────────────────────────────────
+function saveName(id, val) {
+  state[id].name = val;
+  localStorage.setItem("ch_name_" + id, val);
+}
+
+// ─── Server-Sent Events ───────────────────────────────────────────────────────
+function startSSE() {
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource("/events");
+  evtSource.addEventListener("status", e => {
+    try { applyStatus(JSON.parse(e.data)); } catch(_) {}
+  });
+  evtSource.onopen = () => {
+    const pill = document.getElementById("conn-pill");
+    pill.textContent = "live";
+    pill.classList.add("live");
+  };
+  evtSource.onerror = () => {
+    const pill = document.getElementById("conn-pill");
+    pill.textContent = "offline";
+    pill.classList.remove("live");
+    setTimeout(startSSE, 5000);
+  };
+}
+
+// ─── Demo simulation ──────────────────────────────────────────────────────────
+function runDemo() {
+  isDemo = true;
+  const pill = document.getElementById("conn-pill");
+  pill.textContent = "demo";
+  pill.style.borderColor = "var(--accent)";
+  pill.style.color = "var(--accent)";
+
+  // simulate a physical switch press every few seconds
+  let tick = 0;
+  setInterval(() => {
+    tick++;
+    // simulate ch2 toggle at tick 4
+    if (tick === 4) {
+      state[2].on = true;
+      updateCard(2);
+      toast("Physical switch: CH-03 turned ON");
+    }
+    // simulate ch0 toggle at tick 8
+    if (tick === 8) {
+      state[0].on = true;
+      updateCard(0);
+      toast("Physical switch: CH-01 turned ON");
+    }
+    if (tick >= 8) tick = 0;
+  }, 2000);
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+buildGrid();
+if (isEsp32()) {
+  startSSE();
+  refreshStatus();
+} else {
+  runDemo();
+}
+</script>
+</body>
+</html>
