@@ -5,7 +5,8 @@ and relays both work at all times. Phone control is a bonus, not a dependency.
 
 ## Features
 
-- 4-channel relay control (expandable)
+- 4-channel relay control (expandable) <img width="230" height="234" alt="image" src="https://github.com/user-attachments/assets/30aee8c8-99d0-4e7c-b3ea-bc4953b2c4d5" />
+
 - Physical wall switches work in parallel, always
 - Local Wi-Fi web interface, no internet required
 - Optional MQTT for internet-based control
